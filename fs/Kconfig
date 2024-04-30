@@ -133,10 +133,11 @@ endmenu
 endif # BLOCK
 
 if BLOCK
-menu "DOS/FAT/EXFAT/NT Filesystems"
+menu "DOS/FAT/EXFAT/SDFAT/NT Filesystems"
 
 source "fs/fat/Kconfig"
 source "fs/exfat/Kconfig"
+source "fs/sdfat/Kconfig"
 source "fs/ntfs/Kconfig"
 
 endmenu
@@ -320,5 +321,23 @@ endif # NETWORK_FILESYSTEMS
 source "fs/nls/Kconfig"
 source "fs/dlm/Kconfig"
 source "fs/unicode/Kconfig"
+
+config SEC_DEBUG_FPUT_WATCHDOG
+	bool "fput watchdog"
+	depends on SEC_DEBUG
+	---help---
+	  Sets up a watchdog timer to capture file and task that are
+	  locked up attempting to fput.
+	  A detected lockup causes system panic with message.
+
+config SEC_DEBUG_FPUT_WATCHDOG_TIMEOUT
+	int "Watchdog timeout in seconds"
+	range 1 300
+	default 180
+	depends on SEC_DEBUG_FPUT_WATCHDOG
+
+config FS_HPB
+	bool "Support HPB on Filesystem"
+	default n
 
 endmenu
