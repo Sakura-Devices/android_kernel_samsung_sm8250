@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * f_hid.c -- USB HID function driver
@@ -576,7 +577,8 @@ static void hidg_destroy(struct kref *kref)
 {
 	struct f_hidg *hidg = container_of(kref, struct f_hidg, kref);
 
-	put_device(&hidg->dev);
+	kfree(hidg->report_desc);
+	kfree(hidg);
 }
 
 static int f_hidg_release(struct inode *inode, struct file *fd)

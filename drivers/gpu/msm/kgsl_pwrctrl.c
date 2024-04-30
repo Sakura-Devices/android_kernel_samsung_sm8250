@@ -60,6 +60,9 @@ static int last_vote_buslevel;
 static int max_vote_buslevel;
 static unsigned long last_ab;
 
+static BLOCKING_NOTIFIER_HEAD(kgsl_state_notify_list);
+static int kgsl_pwrctrl_notify_state_awake(void);
+
 static void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 					int requested_state);
 static void kgsl_pwrctrl_axi(struct kgsl_device *device, int state);
@@ -2429,6 +2432,14 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	result = kgsl_pwrctrl_cx_ipeak_init(device);
 	if (result)
 		goto error_cleanup_bus_ib;
+ 
+	pwr->cooling_pwr_limit = kgsl_pwr_limits_add(KGSL_DEVICE_3D0);
+	if (IS_ERR_OR_NULL(pwr->cooling_pwr_limit)) {
+		dev_err(device->dev, "Failed to add cooling power limit\n");
+		result = -EINVAL;
+		pwr->cooling_pwr_limit = NULL;
+		goto error_cleanup_bus_ib;
+	}
 
 	pwr->cooling_pwr_limit = kgsl_pwr_limits_add(KGSL_DEVICE_3D0);
 	if (IS_ERR_OR_NULL(pwr->cooling_pwr_limit)) {
@@ -2469,6 +2480,9 @@ void kgsl_pwrctrl_close(struct kgsl_device *device)
 
 	kgsl_pwr_limits_del(pwr->cx_ipeak_pwr_limit);
 	pwr->cx_ipeak_pwr_limit = NULL;
+ 
+	kgsl_pwr_limits_del(pwr->cooling_pwr_limit);
+	pwr->cooling_pwr_limit = NULL;
 
 	if (!IS_ERR_OR_NULL(pwr->gpu_ipeak_client[0].client))
 		cx_ipeak_victim_unregister(pwr->gpu_ipeak_client[0].client);
@@ -3028,6 +3042,7 @@ int kgsl_pwrctrl_change_state(struct kgsl_device *device, int state)
 		status = _aware(device);
 		break;
 	case KGSL_STATE_ACTIVE:
+		kgsl_pwrctrl_notify_state_awake();
 		status = _wake(device);
 		break;
 	case KGSL_STATE_NAP:
@@ -3444,4 +3459,38 @@ int kgsl_pwrctrl_set_default_gpu_pwrlevel(struct kgsl_device *device)
 
 	/* Request adjusted DCVS level */
 	return kgsl_clk_set_rate(device, pwr->active_pwrlevel);
+}
+
+/**
+ * kgsl_pwrctrl_register_state_awake_notifier()
+ * @device: Pointer to client notifier_block
+ */
+int kgsl_pwrctrl_register_state_awake_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_cond_register(&kgsl_state_notify_list,
+							nb);
+}
+EXPORT_SYMBOL(kgsl_pwrctrl_register_state_awake_notifier);
+
+/**
+ * kgsl_pwrctrl_unregister_state_awake_notifier()
+ * @device: Pointer to client notifier_block
+ */
+int kgsl_pwrctrl_unregister_state_awake_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&kgsl_state_notify_list, nb);
+}
+EXPORT_SYMBOL(kgsl_pwrctrl_unregister_state_awake_notifier);
+
+/**
+ * kgsl_pwrctrl_notify_state_awake() - Notify client that GPU has awaken
+ * awake: boolean representing GPU device state
+ */
+int kgsl_pwrctrl_notify_state_awake(void)
+{
+	int ret;
+
+	ret = blocking_notifier_call_chain(&kgsl_state_notify_list, true, NULL);
+
+	return notifier_to_errno(ret);
 }

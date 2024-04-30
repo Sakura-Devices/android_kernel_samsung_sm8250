@@ -449,6 +449,7 @@ struct kgsl_context {
 struct kgsl_process_private {
 	unsigned long priv;
 	struct pid *pid;
+	pid_t tid;
 	char comm[TASK_COMM_LEN];
 	spinlock_t mem_lock;
 	struct kref refcount;

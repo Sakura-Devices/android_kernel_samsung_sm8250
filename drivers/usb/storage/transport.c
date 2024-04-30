@@ -47,6 +47,7 @@
 
 #include <linux/blkdev.h>
 #include "../../scsi/sd.h"
+#include "../core/usb.h"
 
 
 /***********************************************************************
@@ -911,6 +912,9 @@ Retry_Sense:
 	 * will want to acquire it.
 	 */
 	mutex_unlock(&us->dev_mutex);
+#ifdef CONFIG_USB_STORAGE_DETECT
+	msleep(200);
+#endif
 	result = usb_stor_port_reset(us);
 	mutex_lock(&us->dev_mutex);
 
@@ -1436,9 +1440,13 @@ int usb_stor_port_reset(struct us_data *us)
 			result = -EIO;
 			usb_stor_dbg(us, "No reset during disconnect\n");
 		} else {
-			result = usb_reset_device(us->pusb_dev);
-			usb_stor_dbg(us, "usb_reset_device returns %d\n",
-				     result);
+			if (test_bit(US_FLIDX_TIMED_OUT, &us->dflags)) {
+				result = usb_remove_device(us->pusb_dev);
+			} else {
+				result = usb_reset_device(us->pusb_dev);
+				usb_stor_dbg(us, "usb_reset_device returns %d\n",
+					     result);
+			}
 		}
 		usb_unlock_device(us->pusb_dev);
 	}

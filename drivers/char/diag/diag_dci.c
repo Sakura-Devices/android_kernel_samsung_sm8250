@@ -1074,7 +1074,6 @@ void extract_dci_pkt_rsp(unsigned char *buf, int len, int data_source,
 		mutex_unlock(&driver->dci_mutex);
 		return;
 	}
-
 	mutex_lock(&entry->buffers[data_source].buf_mutex);
 	rsp_buf = entry->buffers[data_source].buf_cmd;
 
@@ -3199,6 +3198,7 @@ fail_alloc:
 		kfree(new_entry);
 		new_entry = NULL;
 	}
+	put_task_struct(current);
 	mutex_unlock(&driver->dci_mutex);
 	put_task_struct(task_s);
 	put_task_struct(task_s);

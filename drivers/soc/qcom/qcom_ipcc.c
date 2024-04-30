@@ -11,6 +11,9 @@
 #include <linux/platform_device.h>
 #include <linux/mailbox_controller.h>
 #include <dt-bindings/soc/qcom,ipcc.h>
+#ifdef CONFIG_SEC_PM
+#include <linux/wakeup_reason.h>
+#endif
 
 /* IPCC Register offsets */
 #define IPCC_REG_SEND_ID		0x0C

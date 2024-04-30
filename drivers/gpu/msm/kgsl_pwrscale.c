@@ -905,6 +905,17 @@ static int opp_notify(struct notifier_block *nb,
 	pwr->thermal_pwrlevel_floor = min_level;
 
 	mutex_unlock(&device->mutex);
+ 
+	if (kgsl_pwr_limits_set_freq(pwr->cooling_pwr_limit,
+			pwr->pwrlevels[max_level].gpu_freq)) {
+		dev_err(device->dev,
+				"Failed to set cooling thermal limit via limits fw\n");
+		mutex_lock(&device->mutex);
+		pwr->thermal_pwrlevel = max_level;
+		/* Update the current level using the new limit */
+		kgsl_pwrctrl_pwrlevel_change(device, pwr->active_pwrlevel);
+		mutex_unlock(&device->mutex);
+	}
 
 	if (kgsl_pwr_limits_set_freq(pwr->cooling_pwr_limit,
 			pwr->pwrlevels[max_level].gpu_freq)) {

@@ -45,6 +45,10 @@
 
 #include "irq-gic-common.h"
 
+#ifdef CONFIG_SEC_PM
+#include <linux/wakeup_reason.h>
+#endif
+
 struct redist_region {
 	void __iomem		*redist_base;
 	phys_addr_t		phys_base;
@@ -386,6 +390,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 	for (i = find_first_bit((unsigned long *)pending, gic->irq_nr);
 	     i < gic->irq_nr;
 	     i = find_next_bit((unsigned long *)pending, gic->irq_nr, i+1)) {
+#ifndef CONFIG_SEC_PM
 		unsigned int irq = irq_find_mapping(gic->domain, i);
 		struct irq_desc *desc = irq_to_desc(irq);
 		const char *name = "null";
@@ -396,6 +401,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 			name = desc->action->name;
 
 		pr_warn("%s: %d triggered %s\n", __func__, irq, name);
+#endif
 	}
 }
 

@@ -981,4 +981,15 @@ config ICNSS_QMI
 	  and configurations. It also send WLAN on/off control message to FW
 	  over QMI channel.
 
+config DSP_SLEEP_RECOVERY
+	tristate "DSP_SLEEP_RECOVERY"
+	help
+	  Say 'Y' here to enable SSR when DSP(ADSP/CDSP) fail to enter sleep.
+
+config SEC_CDSP_NOT_CRASH_ENG
+	bool "crash only trigger on USER/USERDEBUG except ENG"
+	default n
+	help
+	  This option provides crash only except ENG Binary.
+
 source "drivers/soc/qcom/wcnss/Kconfig"

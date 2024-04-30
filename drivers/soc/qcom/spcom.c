@@ -1553,6 +1553,14 @@ static int spcom_device_open(struct inode *inode, struct file *filp)
 	if (ch->is_busy) {
 		spcom_pr_err("channel [%s] is BUSY and has %d of clients, already in use\n",
 			name, ch->num_clients);
+
+		//SAMSUNG DEBUG
+		for(i = 0; i < ch->num_clients; i++) {
+			if(i < SPCOM_MAX_CHANNEL_CLIENTS) {
+				pr_err("channel [%s] is BUSY and has %d of clients, already in use by pid [%d]\n",
+					name, ch->num_clients, ch->pid[i]);
+			}
+		}
 		mutex_unlock(&ch->lock);
 		return -EBUSY;
 	}

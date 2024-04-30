@@ -31,6 +31,7 @@
 #include <linux/pci.h>
 #include <linux/scatterlist.h>
 #include <linux/vmalloc.h>
+#include <linux/msm_dma_iommu_mapping.h>
 
 #define IOMMU_MAPPING_ERROR	0
 
@@ -858,15 +859,21 @@ int iommu_dma_map_sg(struct device *dev, struct scatterlist *sg,
 	iova_len = iommu_dma_prepare_map_sg(dev, iovad, sg, nents);
 
 	iova = iommu_dma_alloc_iova(domain, iova_len, dma_get_mask(dev), dev);
-	if (!iova)
+	if (!iova) {
+		pr_err("DEBUG: Alloc iova failed for len 0x%zx\n", iova_len);
+		msm_dma_debug_count_buffers(dev);
 		goto out_restore_sg;
+	}
 
 	/*
 	 * We'll leave any physical concatenation to the IOMMU driver's
 	 * implementation - it knows better than we do.
 	 */
-	if (iommu_map_sg(domain, iova, sg, nents, prot) < iova_len)
+	if (iommu_map_sg(domain, iova, sg, nents, prot) < iova_len) {
+		pr_err("DEBUG: Map failed for DMAADDR=0x%pad\n", iova);
+		msm_dma_debug_count_buffers(dev);
 		goto out_free_iova;
+	}
 
 	return iommu_dma_finalise_sg(dev, sg, nents, iova);
 

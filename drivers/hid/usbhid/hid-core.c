@@ -44,6 +44,8 @@
 
 #define DRIVER_DESC "USB HID core driver"
 
+#undef dev_dbg
+#define dev_dbg dev_err
 /*
  * Module parameters.
  */
