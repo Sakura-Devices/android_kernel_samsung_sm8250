@@ -822,7 +822,6 @@ static void check_stack_usage(void)
 #else
 static inline void check_stack_usage(void) {}
 #endif
-
 void __noreturn do_exit(long code)
 {
 	struct task_struct *tsk = current;

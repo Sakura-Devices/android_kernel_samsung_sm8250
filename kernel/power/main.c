@@ -16,8 +16,15 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/suspend.h>
-
+#ifdef CONFIG_SEC_PM
+#include <linux/input/qpnp-power-on.h>
+#include <linux/fb.h>
+#endif
 #include "power.h"
+
+#ifdef CONFIG_SEC_PM
+static struct delayed_work ws_work;
+#endif
 
 #ifdef CONFIG_PM_SLEEP
 
@@ -843,6 +850,47 @@ power_attr(pm_freeze_timeout);
 
 #endif	/* CONFIG_FREEZER*/
 
+#ifdef CONFIG_SEC_PM
+extern int qpnp_set_resin_wk_int(int en);
+static int volkey_wakeup;
+static ssize_t volkey_wakeup_show(struct kobject *kobj,
+				  struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", volkey_wakeup);
+}
+
+static ssize_t volkey_wakeup_store(struct kobject *kobj,
+				   struct kobj_attribute *attr,
+				   const char *buf, size_t n)
+{
+	int val;
+
+	if (kstrtoint(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	if (volkey_wakeup == val)
+		return n;
+
+	volkey_wakeup = val;
+	qpnp_set_resin_wk_int(volkey_wakeup);
+
+	return n;
+
+}
+power_attr(volkey_wakeup);
+
+extern int poff_status;
+static ssize_t rtc_status_show(struct kobject *kobj,
+				  struct kobj_attribute *attr, char *buf)
+{
+	int status = poff_status;
+	pr_info("complete power off status(%d)\n", status);
+	poff_status = 0;
+	return sprintf(buf, "%d\n", status);
+}
+power_attr_ro(rtc_status);
+#endif /* CONFIG_SEC_PM */
+
 static struct attribute * g[] = {
 	&state_attr.attr,
 #ifdef CONFIG_PM_TRACE
@@ -872,6 +920,10 @@ static struct attribute * g[] = {
 #ifdef CONFIG_FREEZER
 	&pm_freeze_timeout_attr.attr,
 #endif
+#ifdef CONFIG_SEC_PM
+	&volkey_wakeup_attr.attr,
+	&rtc_status_attr.attr,
+#endif
 	NULL,
 };
 
@@ -897,6 +949,37 @@ static int __init pm_start_workqueue(void)
 	return pm_wq ? 0 : -ENOMEM;
 }
 
+#ifdef CONFIG_SEC_PM
+static void handle_ws_work(struct work_struct *work)
+{
+	//wakeup_sources_stats_active();
+	schedule_delayed_work(&ws_work, msecs_to_jiffies(5000));
+}
+
+static int fb_state_change(struct notifier_block *nb, unsigned long val,
+			   void *data)
+{
+	int *blank;
+
+	if (val != FB_EVENT_BLANK)
+		return 0;
+
+	blank = data;
+
+	if (*blank == FB_BLANK_UNBLANK) {
+		cancel_delayed_work_sync(&ws_work);
+ 	} else {
+		schedule_delayed_work(&ws_work, msecs_to_jiffies(5000));
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block fb_block = {
+	.notifier_call = fb_state_change,
+};
+#endif
+
 static int __init pm_init(void)
 {
 	int error = pm_start_workqueue();
@@ -912,6 +995,10 @@ static int __init pm_init(void)
 	if (error)
 		return error;
 	pm_print_times_init();
+#ifdef CONFIG_SEC_PM
+	msm_drm_register_notifier_client(&fb_block);
+	INIT_DELAYED_WORK(&ws_work, handle_ws_work);
+#endif	
 	return pm_autosleep_init();
 }
 

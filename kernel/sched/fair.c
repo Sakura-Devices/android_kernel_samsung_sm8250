@@ -23,7 +23,6 @@
 #include "sched.h"
 
 #include <trace/events/sched.h>
-
 #include "walt.h"
 
 #ifdef CONFIG_SMP
@@ -578,7 +577,6 @@ static void update_min_vruntime(struct cfs_rq *cfs_rq)
 	struct rb_node *leftmost = rb_first_cached(&cfs_rq->tasks_timeline);
 
 	u64 vruntime = cfs_rq->min_vruntime;
-
 	if (curr) {
 		if (curr->on_rq)
 			vruntime = curr->vruntime;
@@ -4134,7 +4132,6 @@ static void
 place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 {
 	u64 vruntime = cfs_rq->min_vruntime;
-
 	/*
 	 * The 'current' period is already promised to the current tasks,
 	 * however the extra weight of the new task will slow them down a
@@ -4515,7 +4512,6 @@ pick_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 			if (!second || (curr && entity_before(curr, second)))
 				second = curr;
 		}
-
 		if (second && wakeup_preempt_entity(second, left) < 1)
 			se = second;
 	}
@@ -5520,8 +5516,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 {
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
-	int task_new = !(flags & ENQUEUE_WAKEUP);
-
+	
 	/*
 	 * The code below (indirectly) updates schedutil which looks at
 	 * the cfs_rq utilization to select a frequency.
@@ -5608,7 +5603,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		 * into account, but that is not straightforward to implement,
 		 * and the following generally works well enough in practice.
 		 */
-		if (!task_new)
+		if (flags & ENQUEUE_WAKEUP)
 			update_overutilized_status(rq);
 	}
 
@@ -6243,10 +6238,11 @@ stune_util(int cpu, unsigned long other_util,
 	unsigned long util = min_t(unsigned long, SCHED_CAPACITY_SCALE,
 				   cpu_util_freq(cpu, walt_load) + other_util);
 	long margin = schedtune_cpu_margin_with(util, cpu, NULL);
-
+	unsigned long boosted_util;
 	trace_sched_boost_cpu(cpu, util, margin);
+	boosted_util = util + margin;
 
-	return util + margin;
+	return boosted_util;
 }
 
 #else /* CONFIG_SCHED_TUNE */
@@ -6258,6 +6254,19 @@ schedtune_cpu_margin_with(unsigned long util, int cpu, struct task_struct *p)
 }
 
 #endif /* CONFIG_SCHED_TUNE */
+
+static inline unsigned long
+boosted_task_util(struct task_struct *task)
+{
+	unsigned long util = task_util_est(task);
+	long margin = schedtune_task_margin(task);
+	unsigned long ret_value;
+
+	ret_value = util + margin;
+	trace_sched_boost_task(task, util, margin);
+
+	return ret_value;
+}
 
 static unsigned long cpu_util_without(int cpu, struct task_struct *p);
 
@@ -6927,6 +6936,11 @@ static int get_start_cpu(struct task_struct *p)
 			task_boost == TASK_BOOST_ON_MID;
 	bool task_skip_min = task_skip_min_cpu(p);
 
+	if (task_boost > TASK_BOOST_ON_MID) {
+		start_cpu = rd->max_cap_orig_cpu;
+		return start_cpu;
+	}
+
 	/*
 	 * note about min/mid/max_cap_orig_cpu - either all of them will be -ve
 	 * or just mid will be -1, there never be any other combinations of -1s
@@ -6935,11 +6949,9 @@ static int get_start_cpu(struct task_struct *p)
 	if (task_skip_min || boosted) {
 		start_cpu = rd->mid_cap_orig_cpu == -1 ?
 			rd->max_cap_orig_cpu : rd->mid_cap_orig_cpu;
-	}
-
-	if (task_boost > TASK_BOOST_ON_MID) {
-		start_cpu = rd->max_cap_orig_cpu;
+#ifdef CONFIG_WALT_POWER_FEATURE
 		return start_cpu;
+#endif
 	}
 
 	if (start_cpu == -1 || start_cpu == rd->max_cap_orig_cpu)
@@ -7872,7 +7884,6 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		}
 		goto unlock;
 	}
-
 	/* If there is only one sensible candidate, select it now. */
 	cpu = cpumask_first(candidates);
 	if (weight == 1 && ((uclamp_latency_sensitive(p) && idle_cpu(cpu)) ||
@@ -8237,6 +8248,7 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 	find_matching_se(&se, &pse);
 	update_curr(cfs_rq_of(se));
 	BUG_ON(!pse);
+
 	if (wakeup_preempt_entity(se, pse) == 1) {
 		/*
 		 * Bias pick_next to pick the sched entity that is
@@ -8282,6 +8294,7 @@ again:
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	if (prev->sched_class != &fair_sched_class)
 		goto simple;
+
 
 	/*
 	 * Because of the set_next_buddy() in dequeue_task_fair() it is rather
@@ -8753,7 +8766,6 @@ static
 int can_migrate_task(struct task_struct *p, struct lb_env *env)
 {
 	int tsk_cache_hot;
-
 	lockdep_assert_held(&env->src_rq->lock);
 
 	/*
@@ -13063,5 +13075,4 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 		raw_spin_unlock(&migration_lock);
 	}
 }
-
 #endif /* CONFIG_SCHED_WALT */

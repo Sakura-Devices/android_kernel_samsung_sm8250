@@ -173,6 +173,8 @@ __setup("psi=", setup_psi);
 #define WINDOW_MAX_US 10000000	/* Max window size is 10s */
 #define UPDATES_PER_WINDOW 10	/* 10 updates per window */
 
+u64 psi_full_max;
+
 /* Sampling frequency in nanoseconds */
 static u64 psi_period __read_mostly;
 
@@ -570,6 +572,7 @@ static u64 update_triggers(struct psi_group *group, u64 now)
 
 		/* Calculate growth since last update */
 		growth = window_update(&t->win, now, total[t->state]);
+
 		if (growth < t->threshold)
 			continue;
 
@@ -1404,6 +1407,14 @@ static int __init psi_proc_init(void)
 	proc_create("pressure/io", 0, NULL, &psi_io_fops);
 	proc_create("pressure/memory", 0, NULL, &psi_memory_fops);
 	proc_create("pressure/cpu", 0, NULL, &psi_cpu_fops);
+
+	#ifdef CONFIG_SAMSUNG_LMKD_DEBUG
+	if (!proc_symlink("pressure/lmkd_count", NULL, "/proc/lmkd_debug/lmkd_count"))
+		pr_err("Failed to create link /proc/pressure/lmkd_count -> /proc/lmkd_debug/lmkd_count\n");
+	if (!proc_symlink("pressure/lmkd_cricount", NULL, "/proc/lmkd_debug/lmkd_cricount"))
+		pr_err("Failed to create link /proc/pressure/lmkd_cricount -> /proc/lmkd_debug/lmkd_cricount\n");
+	#endif
+
 	return 0;
 }
 module_init(psi_proc_init);

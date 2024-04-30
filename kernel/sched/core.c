@@ -28,6 +28,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
+#include <linux/sec_debug.h>
+
 DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
 
 #ifdef CONFIG_SCHED_DEBUG
@@ -1583,8 +1585,8 @@ static inline bool is_per_cpu_kthread(struct task_struct *p)
  */
 static inline bool is_cpu_allowed(struct task_struct *p, int cpu)
 {
-	if (!cpumask_test_cpu(cpu, &p->cpus_allowed))
-		return false;
+		if (!cpumask_test_cpu(cpu, &p->cpus_allowed))
+			return false;
 
 	if (is_per_cpu_kthread(p))
 		return cpu_online(cpu);
@@ -2176,7 +2178,6 @@ static int select_fallback_rq(int cpu, struct task_struct *p, bool allow_iso)
 	int isolated_candidate = -1;
 	int backup_cpu = -1;
 	unsigned int max_nr = UINT_MAX;
-
 	/*
 	 * If the node that the CPU is on has been offlined, cpu_to_node()
 	 * will return -1. There is no CPU on the node, and we should
@@ -4243,7 +4244,9 @@ again:
 	/* The idle class should always have a runnable task: */
 	BUG();
 }
-
+#ifdef CONFIG_SCHED_INFO
+#define RUN_DELAY_THRESHOLD 10000000000ULL
+#endif /* CONFIG_SCHED_INFO */
 /*
  * __schedule() is the main scheduler function.
  *
@@ -4291,7 +4294,9 @@ static void __sched notrace __schedule(bool preempt)
 	struct rq *rq;
 	int cpu;
 	u64 wallclock;
-
+#ifdef CONFIG_SCHED_INFO
+	unsigned long long run_delay_next_task = 0;
+#endif /* CONFIG_SCHED_INFO */
 	cpu = smp_processor_id();
 	rq = cpu_rq(cpu);
 	prev = rq->curr;
@@ -4378,6 +4383,19 @@ static void __sched notrace __schedule(bool preempt)
 		++*switch_count;
 
 		trace_sched_switch(preempt, prev, next);
+#ifdef CONFIG_SCHED_INFO
+		run_delay_next_task = next->sched_info.run_delay - next->sched_info.last_sum_run_delay;
+		//print out log when task wait on runqueue more than 10sec
+		if(run_delay_next_task >= RUN_DELAY_THRESHOLD)
+			pr_info("Long Runnable TASK (%d)(%s)prio(%d) RD(%Lu)LA(%Lu), CPU(%d), rq nr(%d)[cfs(%d)rt(%d)] util avg[cfs(%lu)rt(%lu)]\n",
+				next->pid, next->comm, next->normal_prio,
+				run_delay_next_task, next->sched_info.last_arrival, cpu,
+				rq->nr_running, rq->cfs.nr_running, rq->rt.rt_nr_running,
+				rq->cfs.avg.util_avg, rq->avg_rt.util_avg);
+
+		next->sched_info.last_sum_run_delay = next->sched_info.run_delay;
+#endif /* CONFIG_SCHED_INFO */
+		sec_debug_task_sched_log(cpu, preempt, next, prev);
 
 		/* Also unlocks the rq: */
 		rq = context_switch(rq, prev, next, &rf);
@@ -5310,8 +5328,6 @@ static int _sched_setscheduler(struct task_struct *p, int policy,
  * @policy: new policy.
  * @param: structure containing the new RT priority.
  *
- * Use sched_set_fifo(), read its comment.
- *
  * Return: 0 on success. An error code otherwise.
  *
  * NOTE that the task may be already dead.
@@ -5353,51 +5369,6 @@ int sched_setscheduler_nocheck(struct task_struct *p, int policy,
 	return _sched_setscheduler(p, policy, param, false);
 }
 EXPORT_SYMBOL_GPL(sched_setscheduler_nocheck);
-
-/*
- * SCHED_FIFO is a broken scheduler model; that is, it is fundamentally
- * incapable of resource management, which is the one thing an OS really should
- * be doing.
- *
- * This is of course the reason it is limited to privileged users only.
- *
- * Worse still; it is fundamentally impossible to compose static priority
- * workloads. You cannot take two correctly working static prio workloads
- * and smash them together and still expect them to work.
- *
- * For this reason 'all' FIFO tasks the kernel creates are basically at:
- *
- *   MAX_RT_PRIO / 2
- *
- * The administrator _MUST_ configure the system, the kernel simply doesn't
- * know enough information to make a sensible choice.
- */
-int sched_set_fifo(struct task_struct *p)
-{
-	struct sched_param sp = { .sched_priority = MAX_RT_PRIO / 2 };
-	return sched_setscheduler_nocheck(p, SCHED_FIFO, &sp);
-}
-EXPORT_SYMBOL_GPL(sched_set_fifo);
-
-/*
- * For when you don't much care about FIFO, but want to be above SCHED_NORMAL.
- */
-int sched_set_fifo_low(struct task_struct *p)
-{
-	struct sched_param sp = { .sched_priority = 1 };
-	return sched_setscheduler_nocheck(p, SCHED_FIFO, &sp);
-}
-EXPORT_SYMBOL_GPL(sched_set_fifo_low);
-
-int sched_set_normal(struct task_struct *p, int nice)
-{
-	struct sched_attr attr = {
-		.sched_policy = SCHED_NORMAL,
-		.sched_nice = nice,
-	};
-	return sched_setattr_nocheck(p, &attr);
-}
-EXPORT_SYMBOL_GPL(sched_set_normal);
 
 static int
 do_sched_setscheduler(pid_t pid, int policy, struct sched_param __user *param)
