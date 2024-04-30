@@ -557,8 +557,13 @@ out:
 }
 EXPORT_SYMBOL_GPL(thp_get_unmapped_area);
 
+#ifdef CONFIG_HUGEPAGE_POOL
+static vm_fault_t __do_huge_pmd_anonymous_page(struct vm_fault *vmf,
+			struct page *page, gfp_t gfp, bool need_clear)
+#else
 static vm_fault_t __do_huge_pmd_anonymous_page(struct vm_fault *vmf,
 			struct page *page, gfp_t gfp)
+#endif
 {
 	struct vm_area_struct *vma = vmf->vma;
 	struct mem_cgroup *memcg;
@@ -580,7 +585,12 @@ static vm_fault_t __do_huge_pmd_anonymous_page(struct vm_fault *vmf,
 		goto release;
 	}
 
+#ifdef CONFIG_HUGEPAGE_POOL
+	if (need_clear)
+		clear_huge_page(page, vmf->address, HPAGE_PMD_NR);
+#else
 	clear_huge_page(page, vmf->address, HPAGE_PMD_NR);
+#endif
 	/*
 	 * The memory barrier inside __SetPageUptodate makes sure that
 	 * clear_huge_page writes become visible before the set_pmd_at()
@@ -731,13 +741,21 @@ vm_fault_t do_huge_pmd_anonymous_page(struct vm_fault *vmf)
 		return ret;
 	}
 	gfp = alloc_hugepage_direct_gfpmask(vma);
+#ifdef CONFIG_HUGEPAGE_POOL
+	page = alloc_from_hugepage_pool(gfp, vma, haddr, HPAGE_PMD_ORDER);
+#else
 	page = alloc_hugepage_vma(gfp, vma, haddr, HPAGE_PMD_ORDER);
+#endif
 	if (unlikely(!page)) {
 		count_vm_event(THP_FAULT_FALLBACK);
 		return VM_FAULT_FALLBACK;
 	}
 	prep_transhuge_page(page);
+#ifdef CONFIG_HUGEPAGE_POOL
+	return __do_huge_pmd_anonymous_page(vmf, page, gfp, false);
+#else
 	return __do_huge_pmd_anonymous_page(vmf, page, gfp);
+#endif
 }
 
 static void insert_pfn_pmd(struct vm_area_struct *vma, unsigned long addr,
@@ -1346,7 +1364,11 @@ alloc:
 	if (__transparent_hugepage_enabled(vma) &&
 	    !transparent_hugepage_debug_cow()) {
 		huge_gfp = alloc_hugepage_direct_gfpmask(vma);
+#ifdef CONFIG_HUGEPAGE_POOL
+		new_page = alloc_from_hugepage_pool(huge_gfp, vma, haddr, HPAGE_PMD_ORDER);
+#else
 		new_page = alloc_hugepage_vma(huge_gfp, vma, haddr, HPAGE_PMD_ORDER);
+#endif
 	} else
 		new_page = NULL;
 
@@ -1381,11 +1403,18 @@ alloc:
 
 	count_vm_event(THP_FAULT_ALLOC);
 
+#ifdef CONFIG_HUGEPAGE_POOL
+	/* hugepage pool always return pre-zeroed new_page */
+	if (page)
+		copy_user_huge_page(new_page, page, vmf->address,
+				    vma, HPAGE_PMD_NR);
+#else
 	if (!page)
 		clear_huge_page(new_page, vmf->address, HPAGE_PMD_NR);
 	else
 		copy_user_huge_page(new_page, page, vmf->address,
 				    vma, HPAGE_PMD_NR);
+#endif
 	__SetPageUptodate(new_page);
 
 	mmun_start = haddr;
@@ -2435,7 +2464,7 @@ static void unmap_page(struct page *page)
 	if (PageAnon(page))
 		ttu_flags |= TTU_SPLIT_FREEZE;
 
-	try_to_unmap(page, ttu_flags);
+	try_to_unmap(page, ttu_flags, NULL);
 
 	VM_WARN_ON_ONCE_PAGE(page_mapped(page), page);
 }
@@ -2787,6 +2816,9 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 	if (page_ref_freeze(head, 1 + extra_pins)) {
 		if (!list_empty(page_deferred_list(head))) {
 			pgdata->split_queue_len--;
+#ifdef CONFIG_HUGEPAGE_POOL
+			count_vm_events(THP_DEFERRED_SPLIT_PAGE_CURRENT, -1);
+#endif
 			list_del(page_deferred_list(head));
 		}
 		if (mapping)
@@ -2829,6 +2861,9 @@ void free_transhuge_page(struct page *page)
 	spin_lock_irqsave(&pgdata->split_queue_lock, flags);
 	if (!list_empty(page_deferred_list(page))) {
 		pgdata->split_queue_len--;
+#ifdef CONFIG_HUGEPAGE_POOL
+		count_vm_events(THP_DEFERRED_SPLIT_PAGE_CURRENT, -1);
+#endif
 		list_del(page_deferred_list(page));
 	}
 	spin_unlock_irqrestore(&pgdata->split_queue_lock, flags);
@@ -2845,6 +2880,9 @@ void deferred_split_huge_page(struct page *page)
 	spin_lock_irqsave(&pgdata->split_queue_lock, flags);
 	if (list_empty(page_deferred_list(page))) {
 		count_vm_event(THP_DEFERRED_SPLIT_PAGE);
+#ifdef CONFIG_HUGEPAGE_POOL
+		count_vm_events(THP_DEFERRED_SPLIT_PAGE_CURRENT, 1);
+#endif
 		list_add_tail(page_deferred_list(page), &pgdata->split_queue);
 		pgdata->split_queue_len++;
 	}
@@ -2876,6 +2914,9 @@ static unsigned long deferred_split_scan(struct shrinker *shrink,
 			list_move(page_deferred_list(page), &list);
 		} else {
 			/* We lost race with put_compound_page() */
+#ifdef CONFIG_HUGEPAGE_POOL
+			count_vm_events(THP_DEFERRED_SPLIT_PAGE_CURRENT, -1);
+#endif
 			list_del_init(page_deferred_list(page));
 			pgdata->split_queue_len--;
 		}
