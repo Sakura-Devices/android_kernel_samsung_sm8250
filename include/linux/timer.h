@@ -224,4 +224,6 @@ int timers_dead_cpu(unsigned int cpu);
 #define timers_dead_cpu		NULL
 #endif
 
+extern int get_cpu_where_timer_on(struct timer_list *timer);
+
 #endif

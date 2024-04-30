@@ -135,6 +135,9 @@ struct drbg_state {
 
 	enum drbg_seed_state seeded;		/* DRBG fully seeded? */
 	bool pr;		/* Prediction resistance enabled? */
+ #ifdef CONFIG_CRYPTO_FIPS /* FIPS_140_2 */
+	bool hw_entropy;
+ #endif
 	bool fips_primed;	/* Continuous test primed? */
 	unsigned char *prev;	/* FIPS 140-2 continuous test value */
 	struct crypto_rng *jent;

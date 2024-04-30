@@ -802,6 +802,30 @@
 		KEEP(*(.initcall##level##.init))			\
 		KEEP(*(.initcall##level##s.init))			\
 
+#ifdef CONFIG_DEFERRED_INITCALLS
+#define DEFERRED_INITCALLS(level)					\
+		__deferred_initcall_start = .;		\
+		KEEP(*(.deferred_initcall##level##.init))		\
+		KEEP(*(.deferred_initcall##level##s.init))		\
+		__deferred_initcall_end = .;
+#endif
+
+#ifdef CONFIG_DEFERRED_INITCALLS
+#define INIT_CALLS							\
+		__initcall_start = .;					\
+		KEEP(*(.initcallearly.init))				\
+		INIT_CALLS_LEVEL(0)					\
+		INIT_CALLS_LEVEL(1)					\
+		INIT_CALLS_LEVEL(2)					\
+		INIT_CALLS_LEVEL(3)					\
+		INIT_CALLS_LEVEL(4)					\
+		INIT_CALLS_LEVEL(5)					\
+		INIT_CALLS_LEVEL(rootfs)				\
+		INIT_CALLS_LEVEL(6)					\
+		INIT_CALLS_LEVEL(7)					\
+		__initcall_end = .;					\
+		DEFERRED_INITCALLS(0)
+#else
 #define INIT_CALLS							\
 		__initcall_start = .;					\
 		KEEP(*(.initcallearly.init))				\
@@ -815,6 +839,7 @@
 		INIT_CALLS_LEVEL(6)					\
 		INIT_CALLS_LEVEL(7)					\
 		__initcall_end = .;
+#endif
 
 #define CON_INITCALL							\
 		__con_initcall_start = .;				\
@@ -825,6 +850,17 @@
 		__security_initcall_start = .;				\
 		KEEP(*(.security_initcall.init))			\
 		__security_initcall_end = .;
+
+#ifdef CONFIG_KUNIT
+/* Alignment must be consistent with (test_module *) in include/test/test.h */
+#define KUNIT_TEST_MODULES						\
+		. = ALIGN(8);						\
+		__test_modules_start = .;				\
+		KEEP(*(.test_modules))					\
+		__test_modules_end = .;
+#else
+#define KUNIT_TEST_MODULES
+#endif
 
 #ifdef CONFIG_BLK_DEV_INITRD
 #define INIT_RAM_FS							\
@@ -994,6 +1030,7 @@
 		CON_INITCALL						\
 		SECURITY_INITCALL					\
 		INIT_RAM_FS						\
+		KUNIT_TEST_MODULES					\
 	}
 
 #define BSS_SECTION(sbss_align, bss_align, stop_align)			\
