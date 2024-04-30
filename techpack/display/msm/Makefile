@@ -1,7 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0
+ifeq ($(CONFIG_TECHPACK_DISPLAY_SAMSUNG),y)
+ccflags-y := -I$(srctree)/include/drm -I$(srctree)/techpack/sec-display/msm -I$(srctree)/techpack/sec-display/msm/dsi -I$(srctree)/techpack/sec-display/msm/dp
+ccflags-y += -I$(srctree)/techpack/sec-display/msm/sde
+ccflags-y += -I$(srctree)/techpack/sec-display/rotator
+else
 ccflags-y := -I$(srctree)/include/drm -I$(srctree)/techpack/display/msm -I$(srctree)/techpack/display/msm/dsi -I$(srctree)/techpack/display/msm/dp
 ccflags-y += -I$(srctree)/techpack/display/msm/sde
 ccflags-y += -I$(srctree)/techpack/display/rotator
+endif
 
 msm_drm-$(CONFIG_DRM_MSM_DP) += dp/dp_usbpd.o \
 	dp/dp_parser.o \

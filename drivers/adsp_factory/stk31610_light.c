@@ -41,7 +41,7 @@ enum {
 };
 
 #ifdef CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR
-#include "../../../techpack/display/msm/samsung/ss_panel_notify.h"
+#include "../../../techpack/sec-display/msm/samsung/ss_panel_notify.h"
 #endif
 
 /*************************************************************************/

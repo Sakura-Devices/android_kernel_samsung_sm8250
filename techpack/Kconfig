@@ -2,4 +2,19 @@ menu "Tech packages"
 
 source "techpack/data/Kconfig"
 
+menu "Samsung techpack packages"
+
+config TECHPACK_CAMERA_SAMSUNG
+    bool "Samsung camera"
+    help
+      Samsung provided camera package.
+
+config TECHPACK_DISPLAY_SAMSUNG
+    bool "Samsung display"
+    help
+      Samsung provided display package.
+      Includes SAMSUNG_DISPLAY and SEC_DP support.
+
+endmenu
+
 endmenu

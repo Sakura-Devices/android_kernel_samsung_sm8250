@@ -38,7 +38,7 @@ enum {
 };
 
 #ifdef CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR
-#include "../../../techpack/display/msm/samsung/ss_panel_notify.h"
+#include "../../../techpack/sec-display/msm/samsung/ss_panel_notify.h"
 #endif
 #ifdef CONFIG_SUPPORT_AMS_LIGHT_LCD_VERSION_DUALIZAION
 #define LIGHT_LCD_TYPE_PATH "/sys/class/lcd/panel/lcd_type"

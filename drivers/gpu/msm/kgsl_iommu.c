@@ -25,7 +25,7 @@
 #if defined(CONFIG_SEC_ABC)
 #include <linux/sti/abc_common.h>
 #endif
-#include "../../../techpack/display/msm/samsung/ss_dpui_common.h"
+#include "../../../techpack/sec-display/msm/samsung/ss_dpui_common.h"
 #endif
 
 #define _IOMMU_PRIV(_mmu) (&((_mmu)->priv.iommu))

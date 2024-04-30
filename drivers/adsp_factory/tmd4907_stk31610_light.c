@@ -33,7 +33,7 @@ enum {
 };
 
 #ifdef CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR
-#include "../../../techpack/display/msm/samsung/ss_panel_notify.h"
+#include "../../../techpack/sec-display/msm/samsung/ss_panel_notify.h"
 #endif
 #ifdef CONFIG_SUPPORT_AMS_LIGHT_CALIBRATION
 int ams_load_ub_cell_id_from_file(char *path, char *data_str);
