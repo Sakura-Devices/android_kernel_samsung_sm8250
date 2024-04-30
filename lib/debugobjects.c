@@ -754,7 +754,12 @@ void debug_object_free(void *addr, struct debug_obj_descr *descr)
 	case ODEBUG_STATE_ACTIVE:
 		state = obj->state;
 		raw_spin_unlock_irqrestore(&db->lock, flags);
+#ifdef CONFIG_SEC_DEBUG
+		panic("DEBUG OBJECT FREE: address(0x%p) %s (active state %u) object type: %s\n",
+			addr, obj_states[obj->state], obj->astate, descr->name);
+#else
 		debug_print_object(obj, "free");
+#endif
 		debug_object_fixup(descr->fixup_free, addr, state);
 		return;
 	default:
