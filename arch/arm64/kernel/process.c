@@ -220,17 +220,24 @@ static void print_pstate(struct pt_regs *regs)
 /*
  * dump a block of kernel memory from around the given address
  */
-static void show_data(unsigned long addr, int nbytes, const char *name)
+static void __show_data(unsigned long addr, int nbytes, const char *name, unsigned long base_addr)
 {
 	int	i, j;
 	int	nlines;
 	u32	*p;
+	unsigned long page_address;
+	const unsigned long page_mask = ~(PAGE_SIZE - 0x1);
+
+	if (!base_addr)
+		page_address = 0x0;
+	else
+		page_address = base_addr & page_mask;
 
 	/*
 	 * don't attempt to dump non-kernel addresses or
 	 * values that are probably just small negative numbers
 	 */
-	if (addr < PAGE_OFFSET || addr > -256UL)
+	if (addr < KIMAGE_VADDR || addr > -256UL)
 		return;
 
 	printk(KERN_DEBUG "\n%s: %#lx:\n", name, addr);
@@ -253,7 +260,9 @@ static void show_data(unsigned long addr, int nbytes, const char *name)
 		for (j = 0; j < 8; j++) {
 			u32	data;
 
-			if (probe_kernel_address(p, data))
+			if (page_address && page_address != (page_mask & (uintptr_t)p))
+				pr_cont(" ????????");
+			else if (probe_kernel_address(p, data))
 				pr_cont(" ********");
 			else
 				pr_cont(" %08x", data);
@@ -263,15 +272,27 @@ static void show_data(unsigned long addr, int nbytes, const char *name)
 	}
 }
 
+static void show_data(unsigned long addr, int nbytes, const char *name)
+{
+	__show_data(addr, nbytes, name, 0);
+}
+
 static void show_extra_register_data(struct pt_regs *regs, int nbytes)
 {
 	mm_segment_t fs;
+	unsigned int i;
 
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 	show_data(regs->pc - nbytes, nbytes * 2, "PC");
 	show_data(regs->regs[30] - nbytes, nbytes * 2, "LR");
 	show_data(regs->sp - nbytes, nbytes * 2, "SP");
+	for (i = 0; i < 30; i++) {
+		char name[4];
+
+		snprintf(name, sizeof(name), "X%u", i);
+		__show_data(regs->regs[i] - nbytes, nbytes * 2, name, regs->regs[i]);
+	}
 	set_fs(fs);
 }
 
@@ -317,7 +338,7 @@ void __show_regs(struct pt_regs *regs)
 		pr_cont("\n");
 	}
 
-	if (!user_mode(regs))
+	if (!user_mode(regs) && (oops_in_progress == 1 || oops_in_progress == 2))
 		show_extra_register_data(regs, 128);
 
 }

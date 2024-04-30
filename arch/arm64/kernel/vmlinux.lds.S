@@ -76,6 +76,10 @@ jiffies = jiffies_64;
 #define TRAMP_TEXT
 #endif
 
+#define RTIC_BSS					\
+	. = ALIGN(PAGE_SIZE);				\
+	KEEP(*(.bss.rtic));			\
+	. = ALIGN(PAGE_SIZE);				\
 /*
  * The size of the PE/COFF section that covers the kernel image, which
  * runs from stext to _edata, must be a round multiple of the PE/COFF
@@ -209,6 +213,10 @@ SECTIONS
 	_sdata = .;
 	RW_DATA_SECTION(L1_CACHE_BYTES, PAGE_SIZE, THREAD_ALIGN)
 
+	.test_modules : {
+		KUNIT_TEST_MODULES
+	}
+
 	/*
 	 * Data written with the MMU off but read with the MMU on requires
 	 * cache lines to be invalidated, discarding up to a Cache Writeback
@@ -249,13 +257,16 @@ SECTIONS
 	swapper_pg_dir = .;
 	. += SWAPPER_DIR_SIZE;
 	swapper_pg_end = .;
-
 	__pecoff_data_size = ABSOLUTE(. - __initdata_begin);
 	_end = .;
 
 	STABS_DEBUG
 
 	HEAD_SYMBOLS
+
+	.bss : {			/* bss segment		*/
+         RTIC_BSS
+	}
 }
 
 /*

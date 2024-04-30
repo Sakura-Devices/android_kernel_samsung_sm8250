@@ -181,6 +181,12 @@ alternative_cb_end
 	stp	x26, x27, [sp, #16 * 13]
 	stp	x28, x29, [sp, #16 * 14]
 
+	str lr, [sp, #S_LR]
+	mrs x22, elr_el1
+ 	mrs x23, spsr_el1
+ 	stp x22, x23, [sp, #S_PC]
+
+
 	.if	\el == 0
 	clear_gp_regs
 	mrs	x21, sp_el0
