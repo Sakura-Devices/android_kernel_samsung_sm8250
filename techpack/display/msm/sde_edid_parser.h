@@ -92,6 +92,9 @@ struct sde_edid_ctrl {
 	struct sde_edid_sink_caps sink_caps;
 	struct sde_edid_hdr_data hdr_data;
 	struct sink_hdmi_vsdb_block hdmi_vsdb;
+#if defined(CONFIG_SEC_DISPLAYPORT)
+	int audio_channel_info;
+#endif
 };
 
 /**
@@ -161,6 +164,11 @@ u8 sde_get_edid_checksum(void *input);
  */
 int _sde_edid_update_modes(struct drm_connector *connector,
 							void *edid_ctrl);
+
+#ifdef CONFIG_SEC_DISPLAYPORT
+char *secdp_vic_to_string(int vic);
+extern int forced_resolution;
+#endif
 
 #endif /* _SDE_EDID_PARSER_H_ */
 

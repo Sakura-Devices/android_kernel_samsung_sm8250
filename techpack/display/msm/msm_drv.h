@@ -201,6 +201,10 @@ enum msm_mdp_conn_property {
 	CONNECTOR_PROP_FB_TRANSLATION_MODE,
 	CONNECTOR_PROP_QSYNC_MODE,
 	CONNECTOR_PROP_CMD_FRAME_TRIGGER_MODE,
+#if defined(CONFIG_DISPLAY_SAMSUNG)
+	/* SAMSUNG_FINGERPRINT */
+	CONNECTOR_PROP_FINGERPRINT_MASK,
+#endif
 
 	/* total # of properties */
 	CONNECTOR_PROP_COUNT
@@ -465,6 +469,9 @@ struct msm_display_topology {
  */
 struct msm_mode_info {
 	uint32_t frame_rate;
+#if defined(CONFIG_DISPLAY_SAMSUNG)
+	uint32_t frame_rate_org;
+#endif
 	uint32_t vtotal;
 	uint32_t prefill_lines;
 	uint32_t jitter_numer;
@@ -711,6 +718,9 @@ struct msm_drm_private {
 	/* update the flag when msm driver receives shutdown notification */
 	bool shutdown_in_progress;
 
+	/* pm notifier */
+	struct notifier_block pm_notifier;
+
 	struct msm_idle idle;
 };
 
@@ -898,6 +908,10 @@ int msm_fb_obj_get_attrs(struct drm_gem_object *obj, int *fb_ns,
 		int *fb_sec, int *fb_sec_dir, unsigned long *flags);
 struct drm_fb_helper *msm_fbdev_init(struct drm_device *dev);
 void msm_fbdev_free(struct drm_device *dev);
+
+#if defined(CONFIG_DISPLAY_SAMSUNG)
+int __msm_drm_notifier_call_chain(unsigned long event, void *data);
+#endif
 
 struct hdmi;
 #ifdef CONFIG_DRM_MSM_HDMI

@@ -2,19 +2,11 @@
 
 # auto-detect subdirs
 ifeq ($(CONFIG_ARCH_KONA), y)
-ifeq ($(CONFIG_TECHPACK_DISPLAY_SAMSUNG),y)
-include $(srctree)/techpack/sec-display/config/konadisp.conf
-else
 include $(srctree)/techpack/display/config/konadisp.conf
-endif
 endif
 
 ifeq ($(CONFIG_ARCH_KONA), y)
-ifeq ($(CONFIG_TECHPACK_DISPLAY_SAMSUNG),y)
-LINUXINCLUDE    += -include $(srctree)/techpack/sec-display/config/konadispconf.h
-else
 LINUXINCLUDE    += -include $(srctree)/techpack/display/config/konadispconf.h
-endif
 endif
 
 ifeq ($(CONFIG_ARCH_LITO), y)

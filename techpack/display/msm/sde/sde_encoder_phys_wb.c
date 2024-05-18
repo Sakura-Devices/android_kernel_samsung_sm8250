@@ -28,6 +28,8 @@ static const u32 cwb_irq_tbl[PINGPONG_MAX] = {SDE_NONE, INTR_IDX_PP1_OVFL,
 	INTR_IDX_PP2_OVFL, INTR_IDX_PP3_OVFL, INTR_IDX_PP4_OVFL,
 	INTR_IDX_PP5_OVFL, SDE_NONE, SDE_NONE};
 
+extern bool flag_boost_mdpclk_cwb;
+
 /**
  * sde_rgb2yuv_601l - rgb to yuv color space conversion matrix
  *
@@ -1240,6 +1242,13 @@ static void _sde_encoder_phys_wb_reset_state(
 	phys_enc->hw_cdm = NULL;
 	phys_enc->hw_ctl = NULL;
 	phys_enc->in_clone_mode = false;
+
+	SDE_INFO("WB Disable\n");
+	flag_boost_mdpclk_cwb = false;
+	if (wb_enc->base.parent->dev) {
+		SDE_INFO("restore normal sde core clk\n");
+		ss_set_normal_sde_core_clk(wb_enc->base.parent->dev);
+	}
 }
 
 static int _sde_encoder_phys_wb_wait_for_commit_done(
@@ -1582,6 +1591,10 @@ static void sde_encoder_phys_wb_enable(struct sde_encoder_phys *phys_enc)
 		return;
 	}
 	dev = wb_enc->base.parent->dev;
+
+	SDE_INFO("WB Enable, boost up sde core clk\n");
+	flag_boost_mdpclk_cwb = true;
+	ss_set_max_sde_core_clk(dev);
 
 	/* find associated writeback connector */
 	connector = phys_enc->connector;

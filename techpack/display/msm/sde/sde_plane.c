@@ -38,6 +38,14 @@
 #include "sde_plane.h"
 #include "sde_color_processing.h"
 
+#if defined(CONFIG_DISPLAY_SAMSUNG)
+#include "sde_encoder.h"
+#include "../samsung/ss_dsi_panel_common.h"
+#ifdef CONFIG_SEC_DEBUG
+#include <linux/sec_debug.h>
+#endif
+#endif
+
 #define SDE_DEBUG_PLANE(pl, fmt, ...) SDE_DEBUG("plane%d " fmt,\
 		(pl) ? (pl)->base.base.id : -1, ##__VA_ARGS__)
 
@@ -626,11 +634,19 @@ int sde_plane_wait_input_fence(struct drm_plane *plane, uint32_t wait_ms)
 
 			switch (rc) {
 			case 0:
-				SDE_ERROR_PLANE(psde, "%ums timeout on %08X fd %d\n",
+				SDE_ERROR_PLANE(psde, "%ums timeout on %08X fd %lld\n",
 						wait_ms, prefix, sde_plane_get_property(pstate,
 						PLANE_PROP_INPUT_FENCE));
 				psde->is_error = true;
 				sde_kms_timeline_status(plane->dev);
+#if defined(CONFIG_DISPLAY_SAMSUNG)
+				{
+					struct dma_fence *tout_fence = input_fence;
+
+					pr_info("DPCI Logging for fence timeout\n");
+					ss_inc_ftout_debug(tout_fence->ops->get_timeline_name(tout_fence));
+				}
+#endif
 				ret = -ETIMEDOUT;
 				break;
 			case -ERESTARTSYS:
@@ -2384,7 +2400,7 @@ static int _sde_atomic_check_decimation_scaler(struct drm_plane_state *state,
 	uint32_t max_downscale_num_w, max_downscale_denom_w;
 	uint32_t max_downscale_num_h, max_downscale_denom_h;
 	uint32_t max_upscale, max_linewidth = 0;
-	bool inline_rotation, rt_client;
+	bool inline_rotation, rt_client, has_predown, pre_down_en = false;
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *new_cstate;
 	struct sde_kms *kms;
@@ -2428,6 +2444,11 @@ static int _sde_atomic_check_decimation_scaler(struct drm_plane_state *state,
 
 	if (!max_linewidth)
 		max_linewidth = psde->pipe_sblk->maxlinewidth;
+
+	has_predown = _sde_plane_has_pre_downscale(psde);
+	if (has_predown)
+		pre_down_en = _sde_plane_is_pre_downscale_enabled(
+				&pstate->pre_down);
 
 	crtc = state->crtc;
 	new_cstate = drm_atomic_get_new_crtc_state(state->state, crtc);
@@ -2586,7 +2607,7 @@ static int _sde_plane_validate_fb(struct sde_plane *psde,
 		if (!ret && ((fb_ns && (mode != SDE_DRM_FB_NON_SEC)) ||
 			(fb_sec && (mode != SDE_DRM_FB_SEC)) ||
 			(fb_sec_dir && (mode != SDE_DRM_FB_SEC_DIR_TRANS)))) {
-			SDE_ERROR_PLANE(psde, "mode:%d fb:%d flag:0x%x rc:%d\n",
+			SDE_ERROR_PLANE(psde, "mode: %d fb:%d flag:0x%x rc:%d\n",
 			mode, fb->base.id, flags, ret);
 			SDE_EVT32(psde->base.base.id, fb->base.id, flags,
 			fb_ns, fb_sec, fb_sec_dir, ret, SDE_EVTLOG_ERROR);
