@@ -384,7 +384,7 @@ out:
 }
 
 #if defined(CONFIG_DISPLAY_SAMSUNG)
-#include "../../../techpack/sec-display/msm/samsung/ss_dsi_panel_debug.h"
+#include "../../../techpack/display/msm/samsung/ss_dsi_panel_debug.h"
 #endif
 
 static void vblank_disable_fn(struct timer_list *t)

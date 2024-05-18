@@ -67,7 +67,7 @@
 
 /* LFD DISPLAY INFO*/
 #if defined(CONFIG_DISPLAY_SAMSUNG)
-#include "../../../techpack/sec-display/msm/samsung/ss_panel_notify.h"
+#include "../../../techpack/display/msm/samsung/ss_panel_notify.h"
 #endif
 #if defined(CONFIG_EXYNOS_DPU30)
 #include <linux/panel_notify.h>

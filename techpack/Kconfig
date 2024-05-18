@@ -9,12 +9,6 @@ config TECHPACK_CAMERA_SAMSUNG
     help
       Samsung provided camera package.
 
-config TECHPACK_DISPLAY_SAMSUNG
-    bool "Samsung display"
-    help
-      Samsung provided display package.
-      Includes SAMSUNG_DISPLAY and SEC_DP support.
-
 endmenu
 
 endmenu

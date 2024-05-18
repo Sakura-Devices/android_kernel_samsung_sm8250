@@ -24,7 +24,7 @@
 #include <linux/spinlock.h>
 #include <linux/uhid.h>
 #include <linux/wait.h>
-#include "../../../techpack/sec-display/msm/samsung/ss_panel_notify.h"
+#include "../../../techpack/display/msm/samsung/ss_panel_notify.h"
 
 #define UHID_NAME	"uhid"
 #define UHID_BUFSIZE	32
