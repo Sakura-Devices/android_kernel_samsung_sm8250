@@ -40,12 +40,6 @@
 	status = "disabled";
 };
 
-&pcie0 {
-	qcom,target-link-speed = <0x2>; /* limit to gen2 */
-	esoc-name = "wlan";
-	oops-after-ready;
-};
-
 &pcie2 {
 	qcom,core-preset = <0x55555555>;
 };
@@ -65,6 +59,7 @@
 };
 &pcie0 {
 	qcom,target-link-speed = <0x2>; /* limit to gen2 */
+	qcom,config-recovery;
 	esoc-name = "wlan";
 	oops-after-ready;
 };

@@ -122,6 +122,7 @@
 		battery,chg_temp_check_type = <0>;
 		battery,dchg_temp_check_type = <0>;
 		battery,blkt_temp_check_type = <0>;
+		battery,lrp_temp_check_type = <0>;
 
 		battery,thermal_source = <2>; /* SEC_BATTERY_THERMAL_SOURCE_ADC */
 		battery,chg_thermal_source = <2>; /* SEC_BATTERY_THERMAL_SOURCE_ADC */
@@ -214,10 +215,10 @@
 
 		battery,chg_high_temp = <800>;
 		battery,chg_high_temp_recovery = <770>;
-		battery,dchg_high_temp = <900>;
-		battery,dchg_high_temp_recovery = <420>;
-		battery,dchg_high_batt_temp = <900>;
-		battery,dchg_high_batt_temp_recovery = <390>;
+		battery,dchg_high_temp = <1000 1000 900 900>;
+		battery,dchg_high_temp_recovery = <1000 1000 420 420>;
+		battery,dchg_high_batt_temp = <1000 1000 900 900>;
+		battery,dchg_high_batt_temp_recovery = <1000 1000 390 390>;
 		battery,chg_input_limit_current = <1000>;
 		battery,chg_charging_limit_current = <1500>;
 		battery,dchg_input_limit_current = <1000>;
@@ -281,8 +282,8 @@
 		battery,siop_hv_input_limit_current = <700>;
 		battery,siop_hv_input_limit_current_2nd = <550>;
 		battery,siop_hv_charging_limit_current = <1000>;
-		battery,siop_apdo_input_limit_current = <1000>;
-		battery,siop_apdo_charging_limit_current = <2000>;
+		battery,siop_apdo_input_limit_current = <1880>;
+		battery,siop_apdo_charging_limit_current = <3760>;
 
 		battery,ttf_hv_charge_current = <2650>;
 		battery,ttf_dc25_charge_current = <4700>;
@@ -364,7 +365,7 @@
 		fuelgauge,capacity_max = <1000>;
 		fuelgauge,capacity_max_margin = <300>;
 		fuelgauge,capacity_min = <0>;
-		fuelgauge,capacity_calculation_type = <28>;
+		fuelgauge,capacity_calculation_type = <92>;
 		fuelgauge,repeated_fuelalert;
 		fuelgauge,using_temp_compensation;
 		fuelgauge,low_temp_limit = <100>;
@@ -379,6 +380,11 @@
 		fuelgauge,fg_reset_wa_data = <0x0EAA 0x3200 0x03AA 0x0040 0x113C>; /* fullcapnom(=capacity), dPacc, dQacc,  rcomp0, tempco */
 		fuelgauge,discharge_temp_threshold = <600>;
 		fuelgauge,discharge_volt_threshold = <4200>;
+		fuelgauge,lost_soc_trig_soc = <1000>;
+		fuelgauge,lost_soc_trig_d_soc = <20>;
+		fuelgauge,lost_soc_trig_scale = <2>;
+		fuelgauge,lost_soc_guarantee_soc = <30>;
+		fuelgauge,lost_soc_min_vol = <3200>;
 		fuelgauge,ttf_capacity = <8105>;
 		fuelgauge,cv_data = <
 			7201 736 2220
